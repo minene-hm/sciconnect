@@ -7,6 +7,7 @@ import Footer from "../../components/Footer/Footer";
 import "./Contact.css";
 import { FaEnvelope, FaMapMarkerAlt, FaPhoneAlt, FaPaperPlane } from "react-icons/fa";
 import universityLogo from "../../assets/univ-blida-logo.png";
+
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
@@ -79,118 +80,119 @@ const Contact = () => {
         </div>
         <div className="contact-hero-divider"></div>
       </section>
+
       <section className="contact-info-section">
-        <div className="container">
+        <div className="contact-container">
           <div className="contact-info-grid">
-            <div className="info-card">
-              <div className="info-icon-wrapper">
-                <FaEnvelope className="info-icon" />
+            <div className="contact-info-card">
+              <div className="contact-info-icon-wrapper">
+                <FaEnvelope className="contact-info-icon" />
               </div>
               <h3>Email Us</h3>
               <p>conference@SciConnect.com</p>
-              <span className="info-sub">Response within 24h</span>
+              <span className="contact-info-sub">Response within 24h</span>
             </div>
-            <div className="info-card">
-              <div className="info-icon-wrapper">
-                <FaMapMarkerAlt className="info-icon" />
+            <div className="contact-info-card">
+              <div className="contact-info-icon-wrapper">
+                <FaMapMarkerAlt className="contact-info-icon" />
               </div>
               <h3>Visit Us</h3>
               <p>Blida, Algeria</p>
-              <span className="info-sub">University of Blida 1</span>
+              <span className="contact-info-sub">University of Blida 1</span>
             </div>
-            <div className="info-card">
-              <div className="info-icon-wrapper">
-                <FaPhoneAlt className="info-icon" />
+            <div className="contact-info-card">
+              <div className="contact-info-icon-wrapper">
+                <FaPhoneAlt className="contact-info-icon" />
               </div>
               <h3>Call Us</h3>
               <p>0252836789</p>
-              <span className="info-sub">Mon-Fri, 9am-6pm</span>
+              <span className="contact-info-sub">Mon-Fri, 9am-6pm</span>
             </div>
           </div>
         </div>
       </section>
 
       <section className="contact-main-section">
-        <div className="container contact-main-grid">
+        <div className="contact-container contact-main-grid">
           <div className="contact-form-wrapper">
-            <h2 className="form-title">Send Us a Message</h2>
+            <h2 className="contact-form-title">Send Us a Message</h2>
             {submitted && (
-              <div className="form-success">
+              <div className="contact-form-success">
                 <FaPaperPlane /> Thank you! Your message has been sent.
               </div>
             )}
             <form onSubmit={handleSubmit} className="contact-form">
-              <div className="form-row two-col">
-                <div className="form-group">
+              <div className="contact-form-row two-col">
+                <div className="contact-form-group">
                   <label>First Name</label>
                   <input
                     type="text"
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleChange}
-                    className={errors.firstName ? "error" : ""}
+                    className={errors.firstName ? "contact-error" : ""}
                     placeholder="Minene"
                   />
-                  {errors.firstName && <span className="error-text">{errors.firstName}</span>}
+                  {errors.firstName && <span className="contact-error-text">{errors.firstName}</span>}
                 </div>
-                <div className="form-group">
+                <div className="contact-form-group">
                   <label>Last Name</label>
                   <input
                     type="text"
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleChange}
-                    className={errors.lastName ? "error" : ""}
+                    className={errors.lastName ? "contact-error" : ""}
                     placeholder="Ahmia"
                   />
-                  {errors.lastName && <span className="error-text">{errors.lastName}</span>}
+                  {errors.lastName && <span className="contact-error-text">{errors.lastName}</span>}
                 </div>
               </div>
-              <div className="form-group">
+              <div className="contact-form-group">
                 <label>Email Address</label>
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className={errors.email ? "error" : ""}
+                  className={errors.email ? "contact-error" : ""}
                   placeholder="Minene_hm@example.com"
                 />
-                {errors.email && <span className="error-text">{errors.email}</span>}
+                {errors.email && <span className="contact-error-text">{errors.email}</span>}
               </div>
-              <div className="form-group">
+              <div className="contact-form-group">
                 <label>Subject</label>
                 <input
                   type="text"
                   name="subject"
                   value={formData.subject}
                   onChange={handleChange}
-                  className={errors.subject ? "error" : ""}
+                  className={errors.subject ? "contact-error" : ""}
                   placeholder="What is this about?"
                 />
-                {errors.subject && <span className="error-text">{errors.subject}</span>}
+                {errors.subject && <span className="contact-error-text">{errors.subject}</span>}
               </div>
-              <div className="form-group">
+              <div className="contact-form-group">
                 <label>Message</label>
                 <textarea
                   name="message"
                   rows="5"
                   value={formData.message}
                   onChange={handleChange}
-                  className={errors.message ? "error" : ""}
+                  className={errors.message ? "contact-error" : ""}
                   placeholder="Tell us how we can help..."
                 ></textarea>
-                {errors.message && <span className="error-text">{errors.message}</span>}
+                {errors.message && <span className="contact-error-text">{errors.message}</span>}
               </div>
-              <button type="submit" className="submit-btn">
+              <button type="submit" className="contact-submit-btn">
                 Send Message <FaPaperPlane />
               </button>
             </form>
           </div>
 
           <div className="contact-map-wrapper">
-            <h2 className="map-title">Our Location</h2>
-            <div className="map-container-interactive">
+            <h2 className="contact-map-title">Our Location</h2>
+            <div className="contact-map-container-interactive">
               <MapContainer
                 center={blidaCoords}
                 zoom={12}
@@ -208,14 +210,14 @@ const Contact = () => {
                 </Marker>
               </MapContainer>
             </div>
-            <p className="map-caption">
+            <p className="contact-map-caption">
               University of Blida 1, Route de Soumâa, Blida, Algeria
             </p>
-            <div className="university-logo-wrapper">
+            <div className="contact-university-logo-wrapper">
               <img 
                 src={universityLogo} 
                 alt="University of Blida 1 Logo" 
-                className="university-logo-img"
+                className="contact-university-logo-img"
                 onError={(e) => {
                   e.target.onerror = null;
                   e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24' fill='none' stroke='%23BDA6CE' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'%3E%3C/path%3E%3C/svg%3E";
