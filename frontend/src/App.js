@@ -13,6 +13,14 @@ import Profile from './dashboard/speaker/pages/Profile';
 import SubmitTalk from './dashboard/speaker/pages/SubmitTalk';
 import StatusTracking from './dashboard/speaker/pages/StatusTracking';
 import Reports from './dashboard/speaker/pages/Reports';
+import AdminLayout from './dashboard/admin/layout/AdminLayout';
+import Dashboard from './dashboard/admin/pages/Dashboard';
+import SpeakerHub from './dashboard/admin/pages/SpeakerHub';
+import SubmissionCenter from './dashboard/admin/pages/SubmissionCenter';
+import AgendaEditor from './dashboard/admin/pages/AgendaEditor';
+import CertificateTool from './dashboard/admin/pages/CertificateTool';
+import RegistrationDesk from './dashboard/admin/pages/RegistrationDesk';
+import SupportInbox from './dashboard/admin/pages/SupportInbox';
 
 function App() {
   return (
@@ -33,6 +41,16 @@ function App() {
           <Route path="submit-talk" element={<SubmitTalk />} />
           <Route path="status" element={<StatusTracking />} />
           <Route path="reports" element={<Reports />} />
+          </Route>
+
+          <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="speakers" element={<SpeakerHub />} />
+          <Route path="submissions" element={<SubmissionCenter />} />
+          <Route path="agenda" element={<AgendaEditor />} />
+          <Route path="certificates" element={<CertificateTool />} />
+          <Route path="registration-desk" element={<RegistrationDesk />} />
+          <Route path="support" element={<SupportInbox />} />
           </Route>
         </Routes>
       </div>
