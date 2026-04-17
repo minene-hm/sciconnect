@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Navbar from "../../components/Navbar/Navbar";
 import Footer from "../../components/Footer/Footer";
 import "./Speakers.css";
@@ -19,6 +19,7 @@ import sp9 from "../../assets/sp9.png";
 import sp10 from "../../assets/sp10.png";
 import sp11 from "../../assets/sp11.png";
 import sp12 from "../../assets/sp12.png";
+import { api } from "../../utils/api";
 
 const Speakers = () => {
   const scrollToSearch = () => {
@@ -28,33 +29,60 @@ const Speakers = () => {
     }
   };
 
-  const featuredSpeakers = [
-    {
-      name: "Dr. Azro Malek",
-      image: sp1,
-      bio: "Leading researcher in AI and Cognitive Sciences with over 10 years of industry experience.",
-    },
-    {
-      name: "Prof. Khadidja Minasseri",
-      image: sp2,
-      bio: "Conference Chair and expert in machine learning applications for healthcare.",
-    },
-    {
-      name: "Ms. Feganou Mohamed",
-      image: sp3,
-      bio: "Event Coordinator and specialist in tech community engagement.",
-    },
-    {
-      name: "Dr. Touati Abdellah",
-      image: sp4,
-      bio: "Renewable energy researcher and keynote speaker on sustainable AI.",
-    },
-  ];
-
+  const defaultImages = [sp1, sp2, sp3, sp4, sp5, sp6, sp7, sp8, sp9, sp10, sp11, sp12];
   const [currentSpeakerIndex, setCurrentSpeakerIndex] = useState(0);
   const [fade, setFade] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [apiSpeakers, setApiSpeakers] = useState([]);
+  const [loadingSpeakers, setLoadingSpeakers] = useState(true);
+
+  useEffect(() => {
+    const loadSpeakers = async () => {
+      try {
+        const result = await api.get("/api/speakers");
+        if (Array.isArray(result)) {
+          setApiSpeakers(result);
+        }
+      } catch (error) {
+        console.error("Failed to load speakers", error);
+      } finally {
+        setLoadingSpeakers(false);
+      }
+    };
+    loadSpeakers();
+  }, []);
+
+  const featuredSpeakers = useMemo(
+    () =>
+      apiSpeakers.slice(0, 4).map((speaker, index) => ({
+        name: speaker.name || "Speaker",
+        image: speaker.photoUrl || defaultImages[index % defaultImages.length],
+        bio:
+          speaker.biography ||
+          `${speaker.name || 'Our expert speaker'} explores ${speaker.scientificTheme || 'conference themes'} and contributes to the community.`,
+      })),
+    [apiSpeakers]
+  );
+
+  const activeSpeakerIndex = featuredSpeakers.length
+    ? currentSpeakerIndex % featuredSpeakers.length
+    : 0;
+
+  const displayedSpeakers = useMemo(
+    () =>
+      apiSpeakers.map((speaker, index) => ({
+        img: speaker.photoUrl || defaultImages[index % defaultImages.length],
+        name: speaker.name || "Speaker",
+        title: speaker.academicTitle || "Speaker",
+        affiliation: speaker.affiliation || "",
+        topic: speaker.scientificTheme || "General",
+        domains: [speaker.scientificTheme || "General"],
+      })),
+    [apiSpeakers]
+  );
 
   const nextSpeaker = () => {
+    if (!featuredSpeakers.length) return;
     setFade(false);
     setTimeout(() => {
       setCurrentSpeakerIndex((prev) => (prev + 1) % featuredSpeakers.length);
@@ -62,32 +90,15 @@ const Speakers = () => {
     }, 150);
   };
 
-  const allSpeakers = [
-    { img: sp1, name: "Azro Malek", title: "Professor", affiliation: "University of Algiers", topic: "AI & Cognition", domains: ["AI", "Machine Learning", "Artificial Intelligence"] },
-    { img: sp2, name: "Khadidja Minasseri", title: "Researcher", affiliation: "Tech Innovators", topic: "Machine Learning", domains: ["AI", "Machine Learning"] },
-    { img: sp3, name: "Feganou Mohamed", title: "Professor", affiliation: "Research Center of Blida", topic: "Ethics in AI", domains: ["AI", "Ethics"] },
-    { img: sp4, name: "Touati Abdellah", title: "Researcher", affiliation: "University of Oran", topic: "Quantum Computing", domains: ["Quantum", "Computing"] },
-    { img: sp5, name: "Sonia Brawni", title: "Professor", affiliation: "University of Constantine", topic: "AI in Healthcare", domains: ["AI", "Healthcare"] },
-    { img: sp6, name: "Bendjabo Salah", title: "Researcher", affiliation: "National Polytechnic School", topic: "Neural Networks", domains: ["AI", "Deep Learning"] },
-    { img: sp7, name: "Zitouni Fatiha", title: "Professor", affiliation: "USTHB", topic: "Computer Vision", domains: ["AI", "Computer Vision"] },
-    { img: sp8, name: "Kharoubi Amel", title: "Researcher", affiliation: "ESI Algiers", topic: "NLP", domains: ["AI", "NLP"] },
-    { img: sp9, name: "Fatma-Zohra Aliani", title: "Professor", affiliation: "USTO", topic: "Robotics & AI", domains: ["AI", "Robotics"] },
-    { img: sp10, name: "Wafi Ahmed", title: "Researcher", affiliation: "University of Blida", topic: "AI in Finance", domains: ["AI", "Finance"] },
-    { img: sp11, name: "Lachheb Abdelbassat", title: "Professor", affiliation: "CERIST", topic: "Generative AI", domains: ["AI", "Generative"] },
-    { img: sp12, name: "Mabrok Siradj", title: "Researcher", affiliation: "CDTA", topic: "Future of Work", domains: ["AI", "Future"] },
-  ];
-
-  const [searchQuery, setSearchQuery] = useState("");
-
   const filteredSpeakers = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const query = searchQuery.toLowerCase();
-    return allSpeakers.filter(
+    return displayedSpeakers.filter(
       (speaker) =>
         speaker.name.toLowerCase().includes(query) ||
         speaker.domains.some((domain) => domain.toLowerCase().includes(query))
     );
-  }, [searchQuery]);
+  }, [searchQuery, displayedSpeakers]);
 
   const handleSearchChange = (e) => setSearchQuery(e.target.value);
 
@@ -161,24 +172,34 @@ const Speakers = () => {
         <div className="speakers-container">
           <h2 className="speakers-featured-title">Meet Some of Our Speakers</h2>
           <div className="speakers-featured-card">
-            <div className={`speakers-featured-content ${fade ? "speakers-fade-in" : "speakers-fade-out"}`}>
-              <img
-                src={featuredSpeakers[currentSpeakerIndex].image}
-                alt={featuredSpeakers[currentSpeakerIndex].name}
-                className="speakers-featured-portrait"
-              />
-              <div className="speakers-featured-details">
-                <button className="speakers-nav-arrow" onClick={nextSpeaker} aria-label="Next speaker">
-                  <FaArrowRight />
-                </button>
-                <h3 className="speakers-featured-name">
-                  {featuredSpeakers[currentSpeakerIndex].name}
-                </h3>
-                <p className="speakers-featured-bio">
-                  {featuredSpeakers[currentSpeakerIndex].bio}
-                </p>
+            {featuredSpeakers.length > 0 ? (
+              <div className={`speakers-featured-content ${fade ? "speakers-fade-in" : "speakers-fade-out"}`}>
+                <img
+                  src={featuredSpeakers[activeSpeakerIndex].image}
+                  alt={featuredSpeakers[activeSpeakerIndex].name}
+                  className="speakers-featured-portrait"
+                />
+                <div className="speakers-featured-details">
+                  <button className="speakers-nav-arrow" onClick={nextSpeaker} aria-label="Next speaker">
+                    <FaArrowRight />
+                  </button>
+                  <h3 className="speakers-featured-name">
+                    {featuredSpeakers[activeSpeakerIndex].name}
+                  </h3>
+                  <p className="speakers-featured-bio">
+                    {featuredSpeakers[activeSpeakerIndex].bio}
+                  </p>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="speakers-featured-empty">
+                {loadingSpeakers ? (
+                  <p>Loading speakers from the server...</p>
+                ) : (
+                  <p>No speaker data is available right now.</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </section>

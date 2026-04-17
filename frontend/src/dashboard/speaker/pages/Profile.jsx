@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import DonutChart3D from '../components/DonutChart3D';
 import defaultAvatar from '../../../assets/profile.png';
+import { api } from '../../../utils/api';
 
 const initialSpeaker = {
   email: 'minene-hm@gmail.com',
@@ -35,6 +36,22 @@ const Profile = () => {
     localStorage.setItem('speakerData', JSON.stringify(speaker));
   }, [speaker]);
 
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem('speakerData') || '{}');
+        if (!saved.email) return;
+        const profile = await api.get(`/api/speaker-profile/${saved.email}`);
+        setSpeaker(profile);
+        setEditForm(profile);
+        if (profile.profileImage) setProfileImage(profile.profileImage);
+      } catch (error) {
+        // Keep local fallback.
+      }
+    };
+    loadProfile();
+  }, []);
+
   const completedFields = Object.values(speaker).filter(val => val && val.trim() !== '').length;
   const completionPercentage = Math.round((completedFields / totalFields) * 100);
 
@@ -54,10 +71,16 @@ const Profile = () => {
     setEditForm({ ...editForm, [e.target.name]: e.target.value });
   };
 
-  const handleSave = () => {
-    setSpeaker(editForm);
-    setIsEditing(false);
-    alert('Profile updated successfully!');
+  const handleSave = async () => {
+    try {
+      const updatedPayload = { ...editForm, profileImage };
+      const response = await api.put(`/api/speaker-profile/${editForm.email}`, updatedPayload);
+      setSpeaker(response.profile);
+      setIsEditing(false);
+      alert('Profile updated successfully!');
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
   const handleCancel = () => {

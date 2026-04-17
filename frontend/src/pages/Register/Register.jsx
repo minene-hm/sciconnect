@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { FaCheckCircle } from "react-icons/fa";
 import "./Register.css";
 import videoBg from "../../assets/re4.mp4";
+import { api } from "../../utils/api";
 
 const Register = () => {
   const [activeTab, setActiveTab] = useState("participant");
@@ -125,40 +126,58 @@ const Register = () => {
     return err;
   };
 
-  const handleParticipantSubmit = (e) => {
+  const handleParticipantSubmit = async (e) => {
     e.preventDefault();
     const err = validateParticipant();
     if (Object.keys(err).length > 0) {
       setErrors(err);
       return;
     }
-    console.log("Participant:", participant);
-    setSubmitted(true);
+    try {
+      await api.post("/api/register", {
+        fullName: participant.fullName,
+        email: participant.email,
+        affiliation: participant.affiliation,
+        role: "Participant",
+      });
+      setSubmitted(true);
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
-  const handleOrganizerSubmit = (e) => {
+  const handleOrganizerSubmit = async (e) => {
     e.preventDefault();
     const err = validateOrganizer();
     if (Object.keys(err).length > 0) {
       setErrors(err);
       return;
     }
-    console.log("Organizer:", organizer);
-    setSubmitted(true);
+    try {
+      await api.post("/api/committee-applications", organizer);
+      setSubmitted(true);
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
-  const handleSpeakerRegisterSubmit = (e) => {
+  const handleSpeakerRegisterSubmit = async (e) => {
     e.preventDefault();
     const err = validateSpeakerRegistration();
     if (Object.keys(err).length > 0) {
       setErrors(err);
       return;
     }
-    console.log("Speaker Registration:", speaker);
-    setSubmitted(true);
+    try {
+      await api.post("/api/speaker-register", speaker);
+      localStorage.setItem("speakerData", JSON.stringify(speaker));
+      setSubmitted(true);
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
-  const handleSpeakerLoginSubmit = (e) => {
+  const handleSpeakerLoginSubmit = async (e) => {
     e.preventDefault();
     const err = {};
     if (!speaker.email.trim()) err.email = "Email required";
@@ -167,8 +186,16 @@ const Register = () => {
       setErrors(err);
       return;
     }
-    console.log("Speaker Login:", { email: speaker.email, password: speaker.password });
-    setSubmitted(true);
+    try {
+      const result = await api.post("/api/speaker-login", {
+        email: speaker.email,
+        password: speaker.password,
+      });
+      localStorage.setItem("speakerData", JSON.stringify(result.profile));
+      setSubmitted(true);
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
   const resetForm = () => {

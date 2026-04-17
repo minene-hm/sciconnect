@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import Navbar from "../../components/Navbar/Navbar";
 import Footer from "../../components/Footer/Footer";
 import "./Program.css";
@@ -8,8 +8,10 @@ import session1 from "../../assets/session1.jpg";
 import session2 from "../../assets/session2.jpg";
 import session3 from "../../assets/session3.jpg";
 import session4 from "../../assets/session4.jpg";
+import { api } from "../../utils/api";
 
 const Program = () => {
+  const [apiAgenda, setApiAgenda] = useState([]);
   const scheduleRef = useRef(null);
   const videoRef = useRef(null);
 
@@ -19,48 +21,33 @@ const Program = () => {
     }
   }, []);
 
+  useEffect(() => {
+    const loadAgenda = async () => {
+      try {
+        const result = await api.get("/api/agenda");
+        if (Array.isArray(result)) {
+          setApiAgenda(result);
+        }
+      } catch (error) {
+        console.error("Failed to load agenda", error);
+      }
+    };
+    loadAgenda();
+  }, []);
+
   const scrollToSchedule = () => {
     scheduleRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const sessions = [
-    {
-      image: session1,
-      title: "Neural Architecture Search",
-      description:
-        "Discover how automated machine learning is designing the next generation of deep learning models for efficiency.",
-      date: "MAY 15",
-      time: "08:00 AM",
-      location: "Grand Ballroom",
-    },
-    {
-      image: session2,
-      title: "The Future of Human-AI Pair Programming",
-      description:
-        "Analyzing the impact of AI agents on the software development lifecycle and code quality standards.",
-      date: "JUN 15",
-      time: "09:00 AM",
-      location: "Workshop B",
-    },
-    {
-      image: session3,
-      title: "Multimodal Foundation Models",
-      description:
-        "A technical breakdown of how models process simultaneous text, image, and audio inputs for real-time reasoning.",
-      date: "JUL 16",
-      time: "09:00 AM",
-      location: "Main Stage",
-    },
-    {
-      image: session4,
-      title: "Securing the AI Pipeline",
-      description:
-        "Essential strategies for protecting training data and preventing prompt injection attacks in production environments.",
-      date: "SEP 16",
-      time: "09:00 AM",
-      location: "Security Hub",
-    },
-  ];
+  const images = [session1, session2, session3, session4];
+  const sessions = apiAgenda.map((item, index) => ({
+    image: images[index % images.length],
+    title: item.sessionTitle || "Session",
+    description: item.theme || item.description || "Conference session details.",
+    date: item.dateLabel || "TBD",
+    time: item.timeSlot || "TBD",
+    location: item.location || "Main Hall",
+  }));
 
   return (
     <>
@@ -91,24 +78,30 @@ const Program = () => {
         <div className="schedule-container">
           <h2 className="schedule-heading">Highlights & Session Schedule</h2>
           <div className="schedule-list">
-            {sessions.map((session, index) => (
-              <div key={index} className="schedule-card">
-                <div className="card-image-col">
-                  <img src={session.image} alt={session.title} />
-                </div>
-                <div className="card-details-col">
-                  <h3 className="session-title">{session.title}</h3>
-                  <p className="session-description">{session.description}</p>
-                </div>
-                <div className="card-stub-col">
-                  <div className="stub-content">
-                    <span className="stub-date">{session.date}</span>
-                    <span className="stub-time">{session.time}</span>
-                    <span className="stub-location">{session.location}</span>
+            {sessions.length > 0 ? (
+              sessions.map((session, index) => (
+                <div key={index} className="schedule-card">
+                  <div className="card-image-col">
+                    <img src={session.image} alt={session.title} />
+                  </div>
+                  <div className="card-details-col">
+                    <h3 className="session-title">{session.title}</h3>
+                    <p className="session-description">{session.description}</p>
+                  </div>
+                  <div className="card-stub-col">
+                    <div className="stub-content">
+                      <span className="stub-date">{session.date}</span>
+                      <span className="stub-time">{session.time}</span>
+                      <span className="stub-location">{session.location}</span>
+                    </div>
                   </div>
                 </div>
+              ))
+            ) : (
+              <div className="schedule-empty-message">
+                <p>No agenda sessions are available right now. Please check back later.</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </section>

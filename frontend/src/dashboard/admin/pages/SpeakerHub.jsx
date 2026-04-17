@@ -1,15 +1,34 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FaEdit, FaTrash, FaPlus, FaEye, FaEyeSlash } from 'react-icons/fa';
-
-const initialSpeakers = [
-  { id: 1, name: 'Prof. Khadidja Minasseri', title: 'Professor', affiliation: 'University of Blida', topic: 'AI & Cognition', bio: 'Expert in neural networks.', photo: null, visibility: true, agendaSlots: ['Day 1 - 9:00 AM'], paperTitle: 'Neural Architecture Search' },
-  { id: 2, name: 'Dr. Amine Bouzid', title: 'Researcher', affiliation: 'USTHB', topic: 'Renewable Energy', bio: 'Solar energy specialist.', photo: null, visibility: false, agendaSlots: [], paperTitle: '' },
-];
+import { api } from '../../../utils/api';
 
 const topics = ['AI & Cognition', 'Data Science', 'Cybersecurity', 'Renewable Energy', 'Health Technology'];
 
 const SpeakerHub = () => {
-  const [speakers, setSpeakers] = useState(initialSpeakers);
+  const [speakers, setSpeakers] = useState([]);
+  useEffect(() => {
+    const loadSpeakers = async () => {
+      try {
+        const data = await api.get('/api/speakers');
+        setSpeakers((data || []).map((s) => ({
+          id: s.id,
+          name: s.name,
+          title: s.academicTitle || '',
+          affiliation: s.affiliation || '',
+          topic: s.scientificTheme || '',
+          bio: s.biography || '',
+          photo: s.photoUrl || null,
+          visibility: typeof s.visibility === 'boolean' ? s.visibility : true,
+          agendaSlots: [],
+          paperTitle: '',
+        })));
+      } catch (error) {
+        alert(error.message);
+      }
+    };
+    loadSpeakers();
+  }, []);
+
   const [filterTopic, setFilterTopic] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -55,27 +74,68 @@ const SpeakerHub = () => {
     }
   };
 
-  const saveSpeaker = () => {
+  const saveSpeaker = async () => {
     const newSpeaker = {
       id: editingSpeaker ? editingSpeaker.id : Date.now(),
       ...formData,
       agendaSlots: editingSpeaker?.agendaSlots || [],
       paperTitle: editingSpeaker?.paperTitle || '',
     };
-    if (editingSpeaker) {
-      setSpeakers(speakers.map(s => s.id === editingSpeaker.id ? newSpeaker : s));
-    } else {
-      setSpeakers([...speakers, newSpeaker]);
+    const payload = {
+      name: formData.name,
+      academicTitle: formData.title,
+      affiliation: formData.affiliation,
+      scientificTheme: formData.topic,
+      biography: formData.bio,
+      photoUrl: photoPreview || '',
+      visibility: formData.visibility,
+    };
+    try {
+      if (editingSpeaker) {
+        await api.put(`/api/speakers/${editingSpeaker.id}`, payload);
+        setSpeakers(speakers.map(s => s.id === editingSpeaker.id ? { ...newSpeaker, ...payload } : s));
+      } else {
+        const created = await api.post('/api/speakers', payload);
+        setSpeakers([...speakers, {
+          id: created.id,
+          name: created.name,
+          title: created.academicTitle || '',
+          affiliation: created.affiliation || '',
+          topic: created.scientificTheme || '',
+          bio: created.biography || '',
+          photo: created.photoUrl || null,
+          visibility: created.visibility,
+          agendaSlots: [],
+          paperTitle: '',
+        }]);
+      }
+      closeModal();
+    } catch (error) {
+      alert(error.message);
     }
-    closeModal();
   };
 
-  const deleteSpeaker = (id) => {
-    if (window.confirm('Delete this speaker?')) setSpeakers(speakers.filter(s => s.id !== id));
+  const deleteSpeaker = async (id) => {
+    if (window.confirm('Delete this speaker?')) {
+      try {
+        await api.delete(`/api/speakers/${id}`);
+        setSpeakers(speakers.filter(s => s.id !== id));
+      } catch (error) {
+        alert(error.message);
+      }
+    }
   };
 
-  const toggleVisibility = (id) => {
-    setSpeakers(speakers.map(s => s.id === id ? { ...s, visibility: !s.visibility } : s));
+  const toggleVisibility = async (id) => {
+    const speaker = speakers.find((s) => s.id === id);
+    if (!speaker) return;
+    const next = !speaker.visibility;
+    try {
+      await api.put(`/api/speakers/${id}`, { visibility: next });
+      setSpeakers(speakers.map(s => s.id === id ? { ...s, visibility: next } : s));
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
   return (

@@ -1,13 +1,33 @@
+import { useEffect, useState } from 'react';
 import { FaClock, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
-
-const mockStatus = {
-  status: 'pending', 
-  message: 'Your application is under review by the committee.',
-  lastUpdated: '2026-03-15',
-};
+import { api } from '../../../utils/api';
 
 const StatusTracking = () => {
-  const { status, message, lastUpdated } = mockStatus;
+  const [statusData, setStatusData] = useState({
+    status: 'pending',
+    message: 'Your application is under review by the committee.',
+    lastUpdated: '',
+  });
+
+  useEffect(() => {
+    const loadStatus = async () => {
+      try {
+        const savedSpeaker = JSON.parse(localStorage.getItem('speakerData') || '{}');
+        if (!savedSpeaker.email) return;
+        const paper = await api.get(`/api/track-paper/${savedSpeaker.email}`);
+        setStatusData({
+          status: (paper.status || 'Pending').toLowerCase(),
+          message: `Current decision: ${paper.status || 'Pending'}.`,
+          lastUpdated: paper.updatedAt ? paper.updatedAt.slice(0, 10) : '',
+        });
+      } catch (error) {
+        // Keep fallback text when no submission exists.
+      }
+    };
+    loadStatus();
+  }, []);
+
+  const { status, message, lastUpdated } = statusData;
 
   const getStatusConfig = () => {
     switch(status) {

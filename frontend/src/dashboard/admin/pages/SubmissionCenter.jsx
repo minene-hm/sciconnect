@@ -1,13 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FaEye, FaFilePdf, FaFilePowerpoint, FaDownload } from 'react-icons/fa';
 import * as XLSX from 'xlsx';
-
-const initialSubmissions = [
-  { id: 1, title: 'Neural Architecture Search for Edge Devices', author: 'Prof. Khadidja Minasseri', theme: 'AI & Cognition', abstract: 'This paper presents a novel NAS method...', coAuthors: 'Dr. Amine Bouzid, Prof. Fatima Zohra', fileUrl: '#', fileType: 'pdf', date: '2026-03-10', status: 'Pending', reviewer: '' },
-  { id: 2, title: 'Renewable Energy Forecasting using LSTM', author: 'Dr. Amine Bouzid', theme: 'Renewable Energy', abstract: 'We propose an LSTM-based model...', coAuthors: 'Prof. Khadidja Minasseri', fileUrl: '#', fileType: 'pptx', date: '2026-03-12', status: 'Under Review', reviewer: '' },
-  { id: 3, title: 'Cybersecurity in Cloud Environments', author: 'Prof. Salah Bendjabo', theme: 'Cybersecurity', abstract: 'Analysis of cloud security threats...', coAuthors: '', fileUrl: '#', fileType: 'pdf', date: '2026-03-14', status: 'Accepted', reviewer: '' },
-  { id: 4, title: 'Data Science for Healthcare', author: 'Dr. Fatima Zohra', theme: 'Health Technology', abstract: 'Using data science to improve patient outcomes...', coAuthors: 'Prof. Khadidja Minasseri', fileUrl: '#', fileType: 'pdf', date: '2026-03-15', status: 'Rejected', reviewer: '' },
-];
+import { api } from '../../../utils/api';
 
 const committeeMembers = ['Dr. Ahmed Benali', 'Prof. Samira Khelif', 'Dr. Nadia Ouali', 'Prof. Reda Bouzid'];
 
@@ -16,7 +10,35 @@ const statusOptions = ['Pending', 'Under Review', 'Accepted', 'Published', 'Reje
 const themes = ['AI & Cognition', 'Data Science', 'Cybersecurity', 'Renewable Energy', 'Health Technology'];
 
 const SubmissionCenter = () => {
-  const [submissions, setSubmissions] = useState(initialSubmissions);
+  const [submissions, setSubmissions] = useState([]);
+  const normalizeSubmission = (sub) => ({
+    id: sub.id,
+    title: sub.paperTitle || sub.title || 'Untitled',
+    author: sub.authors?.[0]?.name || 'Unknown author',
+    authorEmail: sub.authors?.[0]?.email || '',
+    theme: sub.track || sub.theme || 'General',
+    abstract: sub.abstract || '',
+    coAuthors: (sub.authors || []).slice(1).map((a) => a.name).join(', '),
+    fileUrl: '#',
+    fileType: (sub.fileName || '').toLowerCase().endsWith('pptx') ? 'pptx' : 'pdf',
+    date: (sub.createdAt || new Date().toISOString()).slice(0, 10),
+    status: sub.status || 'Pending',
+    reviewer: sub.reviewer || '',
+  });
+
+  const loadSubmissions = async () => {
+    try {
+      const data = await api.get('/api/submissions');
+      setSubmissions((data || []).map(normalizeSubmission));
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  useEffect(() => {
+    loadSubmissions();
+  }, []);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTheme, setFilterTheme] = useState('');
   const [selectedRows, setSelectedRows] = useState([]);
@@ -31,23 +53,29 @@ const SubmissionCenter = () => {
     return matchSearch && matchTheme;
   });
 
-  const handleStatusChange = (id, newStatus) => {
-    setSubmissions(prev => prev.map(sub => sub.id === id ? { ...sub, status: newStatus } : sub));
-    console.log(`Submission ${id} status updated to ${newStatus}`);
+  const handleStatusChange = async (id, newStatus) => {
+    try {
+      await api.patch(`/api/submissions/${id}`, { status: newStatus });
+      setSubmissions(prev => prev.map(sub => sub.id === id ? { ...sub, status: newStatus } : sub));
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
-  const handleReviewerChange = (id, reviewer) => {
-    setSubmissions(prev => prev.map(sub => sub.id === id ? { ...sub, reviewer } : sub));
-    console.log(`Submission ${id} assigned to ${reviewer}`);
+  const handleReviewerChange = async (id, reviewer) => {
+    try {
+      await api.patch(`/api/submissions/${id}`, { reviewer });
+      setSubmissions(prev => prev.map(sub => sub.id === id ? { ...sub, reviewer } : sub));
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
-  const bulkStatusUpdate = (newStatus) => {
+  const bulkStatusUpdate = async (newStatus) => {
     if (selectedRows.length === 0) return;
-    setSubmissions(prev => prev.map(sub => 
-      selectedRows.includes(sub.id) ? { ...sub, status: newStatus } : sub
-    ));
+    await Promise.all(selectedRows.map((id) => api.patch(`/api/submissions/${id}`, { status: newStatus })));
+    setSubmissions(prev => prev.map(sub => (selectedRows.includes(sub.id) ? { ...sub, status: newStatus } : sub)));
     setSelectedRows([]);
-    console.log(`Bulk updated ${selectedRows.length} submissions to ${newStatus}`);
   };
 
   const exportToCSV = () => {

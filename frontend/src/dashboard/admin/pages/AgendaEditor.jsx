@@ -1,30 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FaEdit, FaTrash, FaPlay, FaStop } from 'react-icons/fa';
-
-const availableSpeakers = [
-  { id: 1, name: 'Prof. Khadidja Minasseri' },
-  { id: 2, name: 'Dr. Amine Bouzid' },
-  { id: 3, name: 'Prof. Salah Bendjabo' },
-  { id: 4, name: 'Dr. Fatima Zohra' },
-];
+import { api } from '../../../utils/api';
 
 const themes = ['AI & Cognition', 'Data Science', 'Cybersecurity', 'Renewable Energy', 'Health Technology'];
 
-const initialSessions = {
-  1: [
-    { id: 1, timeStart: '09:00', timeEnd: '10:30', title: 'Keynote: Future of AI', speakerId: 1, theme: 'AI & Cognition', isLive: false },
-    { id: 2, timeStart: '11:00', timeEnd: '12:30', title: 'Machine Learning Workshop', speakerId: 2, theme: 'Data Science', isLive: false },
-  ],
-  2: [
-    { id: 3, timeStart: '09:00', timeEnd: '10:30', title: 'Quantum Computing', speakerId: 3, theme: 'Cybersecurity', isLive: false },
-  ],
-  3: [],
-  4: [],
-};
+const initialSessions = { 1: [], 2: [], 3: [], 4: [] };
 
 const AgendaEditor = () => {
   const [activeDay, setActiveDay] = useState(1);
   const [sessions, setSessions] = useState(initialSessions);
+  const [speakers, setSpeakers] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSession, setEditingSession] = useState(null);
   const [emergencyAnnouncement, setEmergencyAnnouncement] = useState('');
@@ -37,6 +22,37 @@ const AgendaEditor = () => {
   });
 
   const currentSessions = [...(sessions[activeDay] || [])].sort((a, b) => a.timeStart.localeCompare(b.timeStart));
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [agendaData, speakerData] = await Promise.all([
+          api.get('/api/agenda'),
+          api.get('/api/speakers'),
+        ]);
+
+        const grouped = { 1: [], 2: [], 3: [], 4: [] };
+        (agendaData || []).forEach((item) => {
+          const day = Number(item.day) || 1;
+          const [timeStart = '09:00', timeEnd = '10:30'] = (item.timeSlot || '').split(' - ');
+          grouped[day].push({
+            id: item.id,
+            timeStart,
+            timeEnd,
+            title: item.sessionTitle,
+            speakerId: item.speakerId,
+            theme: item.theme || themes[0],
+            isLive: Boolean(item.isLive),
+          });
+        });
+        setSessions(grouped);
+        setSpeakers((speakerData || []).map((s) => ({ id: s.id, name: s.name })));
+      } catch (error) {
+        alert(error.message);
+      }
+    };
+    loadData();
+  }, []);
 
   const openModal = (session = null) => {
     if (session) {
@@ -68,7 +84,7 @@ const AgendaEditor = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const saveSession = () => {
+  const saveSession = async () => {
     if (!formData.title || !formData.speakerId) {
       alert('Please fill all required fields');
       return;
@@ -82,36 +98,69 @@ const AgendaEditor = () => {
       theme: formData.theme,
       isLive: editingSession ? editingSession.isLive : false,
     };
-    setSessions(prev => ({
-      ...prev,
-      [activeDay]: editingSession
-        ? prev[activeDay].map(s => s.id === editingSession.id ? newSession : s)
-        : [...(prev[activeDay] || []), newSession],
-    }));
-    closeModal();
-  };
-
-  const deleteSession = (id) => {
-    if (window.confirm('Delete this session?')) {
-      setSessions(prev => ({
-        ...prev,
-        [activeDay]: prev[activeDay].filter(s => s.id !== id),
-      }));
+    const payload = {
+      timeSlot: `${formData.timeStart} - ${formData.timeEnd}`,
+      sessionTitle: formData.title,
+      speakerId: formData.speakerId,
+      theme: formData.theme,
+      day: activeDay,
+      isLive: editingSession ? editingSession.isLive : false,
+      location: 'Main Hall',
+    };
+    try {
+      if (editingSession) {
+        await api.put(`/api/agenda/${editingSession.id}`, payload);
+        setSessions(prev => ({
+          ...prev,
+          [activeDay]: prev[activeDay].map(s => s.id === editingSession.id ? newSession : s),
+        }));
+      } else {
+        const created = await api.post('/api/agenda', payload);
+        setSessions(prev => ({
+          ...prev,
+          [activeDay]: [...(prev[activeDay] || []), { ...newSession, id: created.id }],
+        }));
+      }
+      closeModal();
+    } catch (error) {
+      alert(error.message);
     }
   };
 
-  const toggleLiveStatus = (id) => {
-    setSessions(prev => ({
-      ...prev,
-      [activeDay]: prev[activeDay].map(s => ({
-        ...s,
-        isLive: s.id === id ? !s.isLive : false,
-      })),
-    }));
+  const deleteSession = async (id) => {
+    if (window.confirm('Delete this session?')) {
+      try {
+        await api.delete(`/api/agenda/${id}`);
+        setSessions(prev => ({
+          ...prev,
+          [activeDay]: prev[activeDay].filter(s => s.id !== id),
+        }));
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+  };
+
+  const toggleLiveStatus = async (id) => {
+    const target = (sessions[activeDay] || []).find((s) => s.id === id);
+    if (!target) return;
+    const nextLive = !target.isLive;
+    try {
+      await api.put(`/api/agenda/${id}`, { isLive: nextLive });
+      setSessions(prev => ({
+        ...prev,
+        [activeDay]: prev[activeDay].map(s => ({
+          ...s,
+          isLive: s.id === id ? nextLive : false,
+        })),
+      }));
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
   const getSpeakerName = (speakerId) => {
-    const speaker = availableSpeakers.find(s => s.id === speakerId);
+    const speaker = speakers.find(s => String(s.id) === String(speakerId));
     return speaker ? speaker.name : 'Unknown';
   };
 
@@ -208,7 +257,7 @@ const AgendaEditor = () => {
                 <label>Speaker *</label>
                 <select name="speakerId" value={formData.speakerId} onChange={handleInputChange} required>
                   <option value="">Select a speaker</option>
-                  {availableSpeakers.map(s => (
+                  {speakers.map(s => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>

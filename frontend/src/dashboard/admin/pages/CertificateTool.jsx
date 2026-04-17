@@ -1,23 +1,63 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FaCheckCircle, FaTimesCircle, FaUpload, FaEnvelope, FaDownload, FaFilePdf } from 'react-icons/fa';
-
-const initialUsers = [
-  { id: 1, name: 'Abdellah Benmoussa', email: 'abdou@example.com', role: 'Speaker', isVerified: false },
-  { id: 2, name: 'Iyad Mirali', email: 'iyad@example.com', role: 'Participant', isVerified: true },
-  { id: 3, name: 'Prof. Ahmed Benali', email: 'ahmed@univ.dz', role: 'Committee', isVerified: false },
-  { id: 4, name: 'Dr. Fatima Zohra', email: 'fatima@lab.dz', role: 'Speaker', isVerified: true },
-];
+import { api } from '../../../utils/api';
 
 const CertificateTool = () => {
-  const [users, setUsers] = useState(initialUsers);
+  const [users, setUsers] = useState([]);
   const [templateType, setTemplateType] = useState('Speaker');
   const [signature, setSignature] = useState(null);
   const [reportFile, setReportFile] = useState(null);
   const [reportTarget, setReportTarget] = useState('All');
   const [reportUploaded, setReportUploaded] = useState(false);
 
-  const toggleVerification = (id) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, isVerified: !u.isVerified } : u));
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const [registrations, speakers] = await Promise.all([
+          api.get('/api/registrations'),
+          api.get('/api/speakers'),
+        ]);
+
+        const registrationUsers = (registrations || []).map((u) => ({
+          id: u.id,
+          name: u.fullName || 'User',
+          email: u.email || '',
+          role: u.role || 'Participant',
+          isVerified: Boolean(u.hasAttended),
+          source: 'registration',
+        }));
+
+        const speakerUsers = (speakers || []).map((u) => ({
+          id: u.id,
+          name: u.name || 'Speaker',
+          email: `${(u.name || 'speaker').replace(/\s+/g, '.').toLowerCase()}@sciconnect.com`,
+          role: 'Speaker',
+          isVerified: Boolean(u.visibility),
+          source: 'speaker',
+        }));
+
+        setUsers([...registrationUsers, ...speakerUsers]);
+      } catch (error) {
+        alert(error.message);
+      }
+    };
+    loadUsers();
+  }, []);
+
+  const toggleVerification = async (id) => {
+    const user = users.find((u) => u.id === id);
+    if (!user) return;
+    const nextValue = !user.isVerified;
+    try {
+      if (user.source === 'registration') {
+        await api.patch(`/api/registrations/${id}`, { hasAttended: nextValue });
+      } else {
+        await api.put(`/api/speakers/${id}`, { visibility: nextValue });
+      }
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, isVerified: nextValue } : u));
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
   const handleSignatureUpload = (e) => {

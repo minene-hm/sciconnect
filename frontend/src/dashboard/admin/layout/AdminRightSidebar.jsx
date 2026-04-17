@@ -1,26 +1,26 @@
 import { useState, useEffect } from 'react';
 import { FaTimes } from 'react-icons/fa';
-
-const mockActivities = [
-  { id: 1, text: 'New registration: Dr. Amine Bouzid (University of Algiers)', time: '2 min ago' },
-  { id: 2, text: 'Paper status updated: "Neural Architecture Search" is now Accepted', time: '15 min ago' },
-  { id: 3, text: 'Speaker verified: Prof. Khadidja Minasseri', time: '1 hour ago' },
-  { id: 4, text: 'New submission: "AI in Renewable Energy"', time: '3 hours ago' },
-];
+import { api } from '../../../utils/api';
 
 const AdminRightSidebar = ({ isOpen, onClose }) => {
-  const [activities, setActivities] = useState(mockActivities);
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      const newActivity = {
-        id: Date.now(),
-        text: `System update: ${Math.random() > 0.5 ? 'Paper reviewed' : 'New speaker registered'}`,
-        time: 'Just now',
-      };
-      setActivities(prev => [newActivity, ...prev.slice(0, 9)]);
-    }, 15000);
-    return () => clearInterval(interval);
+    const loadActivities = async () => {
+      try {
+        const result = await api.get('/api/activity-log');
+        if (Array.isArray(result)) {
+          setActivities(result);
+        }
+      } catch (error) {
+        console.error('Failed to load activity log', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadActivities();
   }, []);
 
   return (
@@ -32,12 +32,20 @@ const AdminRightSidebar = ({ isOpen, onClose }) => {
         </button>
       </div>
       <ul className="activity-list">
-        {activities.map(act => (
-          <li key={act.id} className="activity-item">
-            <div>{act.text}</div>
-            <div className="activity-time">{act.time}</div>
+        {loading ? (
+          <li className="activity-item activity-loading">Loading activity log...</li>
+        ) : activities.length > 0 ? (
+          activities.map(act => (
+            <li key={act.id} className="activity-item">
+              <div>{act.text}</div>
+              <div className="activity-time">{act.time}</div>
+            </li>
+          ))
+        ) : (
+          <li className="activity-item activity-empty">
+            No activity items are available right now.
           </li>
-        ))}
+        )}
       </ul>
     </aside>
   );

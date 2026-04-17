@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination } from "swiper/modules";
 import Navbar from "../../components/Navbar/Navbar";
@@ -27,6 +27,7 @@ import co7 from "../../assets/co7.png";
 import co8 from "../../assets/co8.png";
 
 import teamAbstract from "../../assets/team-abstract.jpg";
+import { api } from "../../utils/api";
 
 const CommitteeCard = ({ img, name, role, institution }) => {
   return (
@@ -42,107 +43,37 @@ const CommitteeCard = ({ img, name, role, institution }) => {
 };
 
 const Committee = () => {
-  const organizingMembers = [
-    {
-      img: co9,
-      name: "Dr. Amine Bouzid",
-      role: "Conference Chair",
-      institution: "University of Algiers",
-    },
-    {
-      img: co1,
-      name: "Ms. Lina Boussouf",
-      role: "Event Coordinator",
-      institution: "Tech Innovators",
-    },
-    {
-      img: co10,
-      name: "Mr. Yacine Toumi",
-      role: "Logistics Manager",
-      institution: "Research Center of Blida",
-    },
-    {
-      img: co2,
-      name: "Dr. Nadia Mansouri",
-      role: "Program Chair",
-      institution: "USTHB, Algiers",
-    },
-    {
-      img: co11,
-      name: "Prof. Ali Ferhat",
-      role: "Finance Chair",
-      institution: "University of Blida 1",
-    },
-    {
-      img: co3,
-      name: "Ms. Amina Ziani",
-      role: "Public Relations",
-      institution: "InnovAlgérie",
-    },
-    {
-      img: co12,
-      name: "Mr. Rachid Hamdi",
-      role: "Technical Director",
-      institution: "CERIST",
-    },
-    {
-      img: co4,
-      name: "Dr. Leila Moussaoui",
-      role: "Workshops Chair",
-      institution: "ESI Algiers",
-    },
-  ];
+  const [committeeMembers, setCommitteeMembers] = useState({ organizing: [], scientific: [] });
+  const [loadingCommittee, setLoadingCommittee] = useState(true);
 
-  const scientificMembers = [
-    {
-      img: co13,
-      name: "Prof. Mohamed Rahmani",
-      role: "Artificial Intelligence",
-      institution: "University of Oran",
-    },
-    {
-      img: co5,
-      name: "Dr. Lina Boussouf",
-      role: "Data Science & Big Data",
-      institution: "University of Constantine",
-    },
-    {
-      img: co14,
-      name: "Dr. Karim Haddad",
-      role: "Renewable Energy",
-      institution: "National Polytechnic School",
-    },
-    {
-      img: co6,
-      name: "Prof. Samira Ait Ali",
-      role: "Robotics & Automation",
-      institution: "USTO, Oran",
-    },
-    {
-      img: co15,
-      name: "Dr. Farid Meziane",
-      role: "Cybersecurity",
-      institution: "EMP, Algiers",
-    },
-    {
-      img: co7,
-      name: "Prof. Nawel Ouadah",
-      role: "Bioinformatics",
-      institution: "University of Tlemcen",
-    },
-    {
-      img: co16,
-      name: "Dr. Hichem Boudiaf",
-      role: "Quantum Computing",
-      institution: "CDTA, Algiers",
-    },
-    {
-      img: co8,
-      name: "Ms. Yasmine Kadi",
-      role: "NLP & Linguistics",
-      institution: "CRSTDLA",
-    },
-  ];
+  const organizingImages = [co9, co1, co10, co2, co11, co3, co12, co4];
+  const scientificImages = [co13, co5, co14, co6, co15, co7, co16, co8];
+
+  useEffect(() => {
+    const loadCommittee = async () => {
+      try {
+        const result = await api.get("/api/committee-members");
+        if (result && result.organizing && result.scientific) {
+          setCommitteeMembers(result);
+        }
+      } catch (error) {
+        console.error("Failed to load committee data", error);
+      } finally {
+        setLoadingCommittee(false);
+      }
+    };
+    loadCommittee();
+  }, []);
+
+  const organizingSource = committeeMembers.organizing.map((member, index) => ({
+    ...member,
+    img: organizingImages[index % organizingImages.length],
+  }));
+
+  const scientificSource = committeeMembers.scientific.map((member, index) => ({
+    ...member,
+    img: scientificImages[index % scientificImages.length],
+  }));
 
   return (
     <>
@@ -173,25 +104,31 @@ const Committee = () => {
           </p>
           
           <div className="carousel-wrapper">
-            <Swiper
-              modules={[Navigation, Pagination]}
-              spaceBetween={30}
-              slidesPerView={4}
-              navigation
-              pagination={{ clickable: true }}
-              breakpoints={{
-                320: { slidesPerView: 1, spaceBetween: 20 },
-                640: { slidesPerView: 2, spaceBetween: 20 },
-                1024: { slidesPerView: 4, spaceBetween: 30 },
-              }}
-              className="committee-swiper"
-            >
-              {organizingMembers.map((member, index) => (
-                <SwiperSlide key={`org-${index}`}>
-                  <CommitteeCard {...member} />
-                </SwiperSlide>
-              ))}
-            </Swiper>
+            {loadingCommittee ? (
+              <p>Loading committee members...</p>
+            ) : organizingSource.length > 0 ? (
+              <Swiper
+                modules={[Navigation, Pagination]}
+                spaceBetween={30}
+                slidesPerView={4}
+                navigation
+                pagination={{ clickable: true }}
+                breakpoints={{
+                  320: { slidesPerView: 1, spaceBetween: 20 },
+                  640: { slidesPerView: 2, spaceBetween: 20 },
+                  1024: { slidesPerView: 4, spaceBetween: 30 },
+                }}
+                className="committee-swiper"
+              >
+                {organizingSource.map((member, index) => (
+                  <SwiperSlide key={`org-${index}`}>
+                    <CommitteeCard {...member} />
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+            ) : (
+              <p>No organizing committee data available.</p>
+            )}
           </div>
         </div>
       </section>
@@ -204,25 +141,31 @@ const Committee = () => {
           </p>
           
           <div className="carousel-wrapper">
-            <Swiper
-              modules={[Navigation, Pagination]}
-              spaceBetween={30}
-              slidesPerView={4}
-              navigation
-              pagination={{ clickable: true }}
-              breakpoints={{
-                320: { slidesPerView: 1, spaceBetween: 20 },
-                640: { slidesPerView: 2, spaceBetween: 20 },
-                1024: { slidesPerView: 4, spaceBetween: 30 },
-              }}
-              className="committee-swiper"
-            >
-              {scientificMembers.map((member, index) => (
-                <SwiperSlide key={`sci-${index}`}>
-                  <CommitteeCard {...member} />
-                </SwiperSlide>
-              ))}
-            </Swiper>
+            {loadingCommittee ? (
+              <p>Loading scientific committee members...</p>
+            ) : scientificSource.length > 0 ? (
+              <Swiper
+                modules={[Navigation, Pagination]}
+                spaceBetween={30}
+                slidesPerView={4}
+                navigation
+                pagination={{ clickable: true }}
+                breakpoints={{
+                  320: { slidesPerView: 1, spaceBetween: 20 },
+                  640: { slidesPerView: 2, spaceBetween: 20 },
+                  1024: { slidesPerView: 4, spaceBetween: 30 },
+                }}
+                className="committee-swiper"
+              >
+                {scientificSource.map((member, index) => (
+                  <SwiperSlide key={`sci-${index}`}>
+                    <CommitteeCard {...member} />
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+            ) : (
+              <p>No scientific committee data available.</p>
+            )}
           </div>
         </div>
       </section>

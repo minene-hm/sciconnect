@@ -1,30 +1,53 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FaEnvelope, FaCheck, FaTrash, FaFlag, FaReply } from 'react-icons/fa';
-
-const initialMessages = [
-  { id: 1, name: 'Aymen Mohamed', email: 'aymen@example.com', subject: 'Registration problem', message: 'I cannot register for the conference. The button does nothing.', status: 'Pending', createdAt: '2026-04-15' },
-  { id: 2, name: 'Ismail youcef', email: 'ycf@example.com', subject: 'Speaker application', message: 'When will I know if my speaker application is accepted?', status: 'Pending', createdAt: '2026-04-14' },
-  { id: 3, name: 'Prof. Ahmed', email: 'ahmed@univ.dz', subject: 'Technical error', message: 'The program page is not loading properly on mobile.', status: 'Pending', createdAt: '2026-04-16' },
-];
+import { api } from '../../../utils/api';
 
 const priorityKeywords = ['problem', 'error', 'register', 'not working', 'bug', 'issue', 'cannot'];
 
 const SupportInbox = () => {
-  const [messages, setMessages] = useState(initialMessages);
+  const [messages, setMessages] = useState([]);
   const [filter, setFilter] = useState('all'); 
+
+  useEffect(() => {
+    const loadMessages = async () => {
+      try {
+        const data = await api.get('/api/contact-messages');
+        setMessages(
+          (data || []).map((msg) => ({
+            ...msg,
+            name: `${msg.firstName || ''} ${msg.lastName || ''}`.trim() || 'Anonymous',
+            createdAt: (msg.createdAt || '').slice(0, 10),
+          }))
+        );
+      } catch (error) {
+        alert(error.message);
+      }
+    };
+    loadMessages();
+  }, []);
 
   const getPriority = (subject, message) => {
     const text = (subject + ' ' + message).toLowerCase();
     return priorityKeywords.some(keyword => text.includes(keyword));
   };
 
-  const updateStatus = (id, newStatus) => {
-    setMessages(prev => prev.map(msg => msg.id === id ? { ...msg, status: newStatus } : msg));
+  const updateStatus = async (id, newStatus) => {
+    try {
+      await api.patch(`/api/contact-messages/${id}`, { status: newStatus });
+      setMessages(prev => prev.map(msg => msg.id === id ? { ...msg, status: newStatus } : msg));
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
-  const deleteMessage = (id) => {
+  const deleteMessage = async (id) => {
     if (window.confirm('Delete this message?')) {
-      setMessages(prev => prev.filter(msg => msg.id !== id));
+      try {
+        await api.delete(`/api/contact-messages/${id}`);
+        setMessages(prev => prev.filter(msg => msg.id !== id));
+      } catch (error) {
+        alert(error.message);
+      }
     }
   };
 

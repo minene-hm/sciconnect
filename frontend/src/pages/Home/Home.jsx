@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar/Navbar";
 import Footer from "../../components/Footer/Footer";
@@ -13,6 +13,7 @@ import audienceImg from "../../assets/audience.jpg";
 import ellipseBg from "../../assets/ellipse.png";
 import Img1 from "../../assets/download (62).jpeg";
 import heroVideo from "../../assets/hero-video.mp4";
+import { api } from "../../utils/api";
 
 import sp1 from "../../assets/sp1.png";
 import sp2 from "../../assets/sp2.png";
@@ -44,6 +45,8 @@ const Home = () => {
   const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + totalSlides) % totalSlides);
   const targetDate = new Date("September 30, 2026 00:00:00").getTime();
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [apiSpeakers, setApiSpeakers] = useState([]);
+  const [apiAgenda, setApiAgenda] = useState([]);
 
   useEffect(() => {
     const calculateTimeLeft = () => {
@@ -63,28 +66,45 @@ const Home = () => {
   }, [targetDate]);
 
   const formatNumber = (num) => String(num).padStart(2, "0");
-  const speakersData = {
-    1: [
-      { img: sp1, name: "Azro Malek", time: "9:00 AM - 10:30 AM", title: "Presentation and Keynotes", desc: "Exploring the future of AI in creative industries." },
-      { img: sp2, name: "Khadidja Minasseri", time: "11:00 AM - 12:30 PM", title: "Machine Learning Workshop", desc: "Hands-on session with the latest ML tools." },
-      { img: sp3, name: "Feganou Mohamed", time: "2:00 PM - 3:30 PM", title: "Ethics in AI", desc: "Navigating the moral landscape of artificial intelligence." },
-    ],
-    2: [
-      { img: sp4, name: "Touati Abdellah", time: "9:00 AM - 10:30 AM", title: "Quantum Computing", desc: "The next frontier in processing power." },
-      { img: sp5, name: "Sonia Brawni", time: "11:00 AM - 12:30 PM", title: "AI in Healthcare", desc: "Transforming patient care with predictive models." },
-      { img: sp6, name: "Bendjabo Salah", time: "2:00 PM - 3:30 PM", title: "Neural Networks Deep Dive", desc: "Understanding the architecture behind modern AI." },
-    ],
-    3: [
-      { img: sp7, name: "Zitouni Fatiha", time: "9:00 AM - 10:30 AM", title: "Computer Vision", desc: "Applications in autonomous systems." },
-      { img: sp8, name: "Kharoubi Amel", time: "11:00 AM - 12:30 PM", title: "NLP Advancements", desc: "From transformers to large language models." },
-      { img: sp9, name: "Fatma-Zohra Aliani", time: "2:00 PM - 3:30 PM", title: "Robotics & AI", desc: "Integrating intelligence into physical machines." },
-    ],
-    4: [
-      { img: sp10, name: "Wafi Ahmed", time: "9:00 AM - 10:30 AM", title: "AI in Finance", desc: "Algorithmic trading and risk assessment." },
-      { img: sp11, name: "Lachheb Abdelbassat", time: "11:00 AM - 12:30 PM", title: "Generative AI", desc: "Creating content with neural networks." },
-      { img: sp12, name: "Mabrok Siradj", time: "2:00 PM - 3:30 PM", title: "Future of Work", desc: "How AI is reshaping careers and industries." },
-    ],
-  };
+
+  useEffect(() => {
+    const loadHomeData = async () => {
+      try {
+        const [speakersResult, agendaResult] = await Promise.all([
+          api.get("/api/speakers"),
+          api.get("/api/agenda"),
+        ]);
+        if (Array.isArray(speakersResult)) setApiSpeakers(speakersResult);
+        if (Array.isArray(agendaResult)) setApiAgenda(agendaResult);
+      } catch (error) {
+        console.error("Home data load failed", error);
+      }
+    };
+    loadHomeData();
+  }, []);
+
+  const scheduleByDay = useMemo(() => {
+    const days = { 1: [], 2: [], 3: [], 4: [] };
+    const speakerMap = Object.fromEntries(apiSpeakers.map((speaker) => [speaker.id, speaker]));
+    const images = [sp1, sp2, sp3, sp4, sp5, sp6, sp7, sp8, sp9, sp10, sp11, sp12];
+
+    apiAgenda.forEach((item, index) => {
+      const speaker = speakerMap[item.speakerId] || {};
+      const day = item.day || 1;
+      days[day] = days[day] || [];
+      days[day].push({
+        img: speaker.photoUrl || images[index % images.length],
+        name: speaker.name || `Speaker ${index + 1}`,
+        time: item.timeSlot || "TBD",
+        title: item.sessionTitle || "Conference Session",
+        desc: item.theme || speaker.biography || "Session details coming soon.",
+        date: item.dateLabel || `Day ${day}`,
+        location: item.location || "Main Hall",
+      });
+    });
+
+    return days;
+  }, [apiAgenda, apiSpeakers]);
 
   const [selectedDay, setSelectedDay] = useState(1);
   const [fade, setFade] = useState(true);
@@ -229,23 +249,29 @@ const Home = () => {
           </div>
 
           <div className={`speaker-cards ${fade ? "fade-in" : "fade-out"}`}>
-            {speakersData[selectedDay].map((speaker, index) => {
-              return (
-                <div className="speaker-card hover-lift" key={index}>
-                  <div className="card-img">
-                    <img src={speaker.img} alt={speaker.name} />
+            {scheduleByDay[selectedDay] && scheduleByDay[selectedDay].length > 0 ? (
+              scheduleByDay[selectedDay].map((speaker, index) => {
+                return (
+                  <div className="speaker-card hover-lift" key={index}>
+                    <div className="card-img">
+                      <img src={speaker.img} alt={speaker.name} />
+                    </div>
+                    <div className="card-meta">
+                      <span className="speaker-name">{speaker.name}</span>
+                      <span className="speaker-time">{speaker.time}</span>
+                    </div>
+                    <div className="card-info">
+                      <h4 className="session-title">{speaker.title}</h4>
+                      <p className="session-desc">{speaker.desc}</p>
+                    </div>
                   </div>
-                  <div className="card-meta">
-                    <span className="speaker-name">{speaker.name}</span>
-                    <span className="speaker-time">{speaker.time}</span>
-                  </div>
-                  <div className="card-info">
-                    <h4 className="session-title">{speaker.title}</h4>
-                    <p className="session-desc">{speaker.desc}</p>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            ) : (
+              <div className="speaker-card speaker-card-empty">
+                <p>No schedule data is available for this day.</p>
+              </div>
+            )}
           </div>
         </div>
       </section>

@@ -1,13 +1,34 @@
+import { useEffect, useState } from 'react';
 import { FaFilePdf, FaDownload } from 'react-icons/fa';
-
-const mockReport = {
-  fileName: 'final_report_minene_Hm.pdf',
-  url: '#',
-};
+import { api } from '../../../utils/api';
 
 const Reports = () => {
+  const [report, setReport] = useState({
+    fileName: 'No report available yet',
+    url: '#',
+    available: false,
+  });
+
+  useEffect(() => {
+    const loadReport = async () => {
+      try {
+        const savedSpeaker = JSON.parse(localStorage.getItem('speakerData') || '{}');
+        if (!savedSpeaker.email) return;
+        const result = await api.get(`/api/reports/${savedSpeaker.email}`);
+        if (result.available) setReport(result);
+      } catch (error) {
+        // Keep fallback.
+      }
+    };
+    loadReport();
+  }, []);
+
   const handleDownload = () => {
-    alert(`Mock download: ${mockReport.fileName}`);
+    if (!report.available) {
+      alert('No report available yet.');
+      return;
+    }
+    window.open(report.url, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -16,7 +37,7 @@ const Reports = () => {
       <div className="report-card">
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <FaFilePdf size={32} color="#e74c3c" />
-          <span>{mockReport.fileName}</span>
+          <span>{report.fileName}</span>
         </div>
         <button className="btn-primary" onClick={handleDownload}>
           <FaDownload /> Download

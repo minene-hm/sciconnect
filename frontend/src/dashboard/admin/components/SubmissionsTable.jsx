@@ -1,27 +1,37 @@
-import { useState } from 'react';
-
-const initialSubmissions = [
-  { id: 1, author: 'Prof. Khadidja Minasseri', title: 'Neural Architecture Search for Edge Devices', category: 'AI & Cognition', file: 'paper1.pdf', status: 'Accepted' },
-  { id: 2, author: 'Dr. Amine Bouzid', title: 'Renewable Energy Forecasting using LSTM', category: 'Renewable Energy', file: 'paper2.pptx', status: 'Under Review' },
-  { id: 3, author: 'Prof. Salah Bendjabo', title: 'Cybersecurity in Cloud Environments', category: 'Cybersecurity', file: 'paper3.pdf', status: 'Pending' },
-  { id: 4, author: 'Dr. Fatima Zohra', title: 'Data Science for Healthcare', category: 'Health Technology', file: 'paper4.pptx', status: 'Rejected' },
-];
+import { useEffect, useState } from 'react';
+import { api } from '../../../utils/api';
 
 const SubmissionsTable = () => {
-  const [submissions, setSubmissions] = useState(initialSubmissions);
+  const [submissions, setSubmissions] = useState([]);
 
-  const handleStatusChange = (id, newStatus) => {
-    setSubmissions(prev =>
-      prev.map(sub =>
-        sub.id === id ? { ...sub, status: newStatus } : sub
-      )
-    );
-    console.log(`Paper ${id} status updated to ${newStatus}`);
-    const activity = {
-      id: Date.now(),
-      text: `Paper "${submissions.find(s => s.id === id)?.title}" status changed to ${newStatus}`,
-      time: 'Just now',
+  useEffect(() => {
+    const loadSubmissions = async () => {
+      try {
+        const data = await api.get('/api/submissions');
+        setSubmissions(
+          (data || []).map((sub) => ({
+            id: sub.id,
+            author: sub.authors?.[0]?.name || 'Unknown',
+            title: sub.paperTitle || 'Untitled',
+            category: sub.track || 'General',
+            file: sub.fileName || 'paper.pdf',
+            status: sub.status || 'Pending',
+          }))
+        );
+      } catch (error) {
+        // Keep empty table on error.
+      }
     };
+    loadSubmissions();
+  }, []);
+
+  const handleStatusChange = async (id, newStatus) => {
+    try {
+      await api.patch(`/api/submissions/${id}`, { status: newStatus });
+      setSubmissions(prev => prev.map(sub => (sub.id === id ? { ...sub, status: newStatus } : sub)));
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
   const handleDownload = (fileName) => {

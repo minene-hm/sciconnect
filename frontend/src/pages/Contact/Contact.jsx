@@ -7,6 +7,7 @@ import Footer from "../../components/Footer/Footer";
 import "./Contact.css";
 import { FaEnvelope, FaMapMarkerAlt, FaPhoneAlt, FaPaperPlane } from "react-icons/fa";
 import universityLogo from "../../assets/univ-blida-logo.png";
+import { api } from "../../utils/api";
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -53,17 +54,21 @@ const Contact = () => {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
-    setSubmitted(true);
-    console.log("Form submitted:", formData);
-    setFormData({ firstName: "", lastName: "", email: "", subject: "", message: "" });
-    setTimeout(() => setSubmitted(false), 5000);
+    try {
+      await api.post("/api/contact-messages", formData);
+      setSubmitted(true);
+      setFormData({ firstName: "", lastName: "", email: "", subject: "", message: "" });
+      setTimeout(() => setSubmitted(false), 5000);
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
   const blidaCoords = [36.4700, 2.8277];

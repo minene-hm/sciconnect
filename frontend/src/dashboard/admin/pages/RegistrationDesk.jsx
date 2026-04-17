@@ -1,26 +1,43 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FaEnvelope, FaCheck, FaTimes } from 'react-icons/fa';
-
-const initialParticipants = [
-  { id: 1, fullName: 'Douaa youcef', affiliation: 'MIT', position: 'Researcher', interest: 'AI & Cognition', status: 'Registered', email: 'douaa@example.com' },
-  { id: 2, fullName: 'Lina mohamed', affiliation: 'Stanford', position: 'Student', interest: 'Data Science', status: 'Registered', email: 'lina@example.com' },
-  { id: 3, fullName: 'salah dib', affiliation: 'University of Blida', position: 'Engineer', interest: 'Cybersecurity', status: 'Attended', email: 'salah@example.com' },
-];
-
-const initialApplicants = [
-  { id: 1, fullName: 'Dr. Ahmed Benali', expertise: 'AI Ethics', yearsExp: 12, bio: 'Professor with 12 years experience.', email: 'ahmed@univ.dz', status: 'pending' },
-  { id: 2, fullName: 'Prof. Samira Khelif', expertise: 'Renewable Energy', yearsExp: 8, bio: 'Research lead at CDER.', email: 'samira@cder.dz', status: 'pending' },
-  { id: 3, fullName: 'Dr. Nadia Ouali', expertise: 'Data Science', yearsExp: 6, bio: 'Senior data scientist.', email: 'nadia@data.dz', status: 'pending' },
-];
+import { api } from '../../../utils/api';
 
 const RegistrationDesk = () => {
-  const [participants, setParticipants] = useState(initialParticipants);
-  const [applicants, setApplicants] = useState(initialApplicants);
+  const [participants, setParticipants] = useState([]);
+  const [applicants, setApplicants] = useState([]);
 
-  const updateParticipantStatus = (id, newStatus) => {
-    setParticipants(prev =>
-      prev.map(p => p.id === id ? { ...p, status: newStatus } : p)
-    );
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const people = await api.get('/api/registrations');
+        setParticipants((people || []).filter((p) => p.role === 'Participant').map((p) => ({
+          ...p,
+          affiliation: p.institution || '-',
+          position: p.position || '-',
+          interest: p.interest || '-',
+          status: p.hasAttended ? 'Attended' : 'Registered',
+        })));
+        setApplicants((people || []).filter((p) => p.role === 'CommitteeApplicant').map((p) => ({
+          ...p,
+          expertise: p.expertise || '-',
+          yearsExp: p.yearsExperience || '-',
+          bio: p.bio || '-',
+          status: p.status || 'pending',
+        })));
+      } catch (error) {
+        alert(error.message);
+      }
+    };
+    loadData();
+  }, []);
+
+  const updateParticipantStatus = async (id, newStatus) => {
+    try {
+      await api.patch(`/api/registrations/${id}`, { hasAttended: newStatus === 'Attended' });
+      setParticipants(prev => prev.map(p => p.id === id ? { ...p, status: newStatus } : p));
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
   const sendParticipantConfirmation = (email, name) => {
@@ -31,11 +48,13 @@ const RegistrationDesk = () => {
     alert(`📧 Confirmation email sent to ${name} (${email}) – Your application has been received.`);
   };
 
-  const handleCommitteeDecision = (applicant, decision) => {
+  const handleCommitteeDecision = async (applicant, decision) => {
     if (decision === 'accept') {
+      await api.patch(`/api/registrations/${applicant.id}`, { status: 'accepted' });
       setApplicants(prev => prev.filter(a => a.id !== applicant.id));
       alert(`✅ Accepted ${applicant.fullName}. Dashboard committee count will increase.`);
     } else {
+      await api.patch(`/api/registrations/${applicant.id}`, { status: 'rejected' });
       setApplicants(prev => prev.filter(a => a.id !== applicant.id));
       alert(`❌ Rejected ${applicant.fullName}.`);
     }

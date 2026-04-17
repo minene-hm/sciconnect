@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "../../components/Navbar/Navbar";
 import Footer from "../../components/Footer/Footer";
 import "./About.css";
 import { FaPlay, FaCheck, FaChevronRight } from "react-icons/fa";
 import { useInView } from "../../hooks/useInView";
+import { api } from "../../utils/api";
 
 import speakerImage from "../../assets/about-speaker.jpg";
 import videoPoster from "../../assets/video-poster.jpg";
@@ -26,35 +27,73 @@ import healthImage from "../../assets/healthImage.png";
 
 const About = () => {
   const [isVideoOpen, setIsVideoOpen] = useState(false);
+  const [requestedTheme, setRequestedTheme] = useState("");
+  const [aboutInfo, setAboutInfo] = useState({ sponsors: [], leftItems: [], rightItems: [], themes: [] });
+  const [loadingAboutInfo, setLoadingAboutInfo] = useState(true);
 
-  const sponsors = [
-    logoUsthb, logoBlida, logoSonatrach, logoAlgerieTelecom,
-    logoYassir, logobymina, logoHamoud, logoIHuawei, logoIoracle,
-    logoUsthb, logoBlida, logoSonatrach, logoAlgerieTelecom,
-    logoYassir, logobymina, logoHamoud, logoIHuawei, logoIoracle,
-  ];
+  const sponsorLogos = {
+    usthb: logoUsthb,
+    blida: logoBlida,
+    sonatrach: logoSonatrach,
+    algerieTelecom: logoAlgerieTelecom,
+    yassir: logoYassir,
+    bymina: logobymina,
+    hamoud: logoHamoud,
+    iHuawei: logoIHuawei,
+    ioracle: logoIoracle,
+  };
 
-  const leftItems = [
-    "Learn from international experts",
-    "Present your research work",
-    "Network with professionals",
-  ];
-  const rightItems = [
-    "Discover new technologies",
-    "Gain international recognition",
-    "Collaborative research opportunities",
-  ];
+  const themeImages = {
+    aiImage,
+    energyImage,
+    dataImage,
+    cyberImage,
+    healthImage,
+  };
 
-  const themes = [
-    { name: "Artificial Intelligence & Machine Learning", image: aiImage },
-    { name: "Renewable Energy & Sustainability", image: energyImage },
-    { name: "Data Science & Big Data", image: dataImage },
-    { name: "Cybersecurity & Networks", image: cyberImage },
-    { name: "Health Technology", image: healthImage },
-  ];
+  useEffect(() => {
+    const loadAboutInfo = async () => {
+      try {
+        const result = await api.get('/api/about-info');
+        if (result) {
+          setAboutInfo(result);
+        }
+      } catch (error) {
+        console.error('Failed to load about info', error);
+      } finally {
+        setLoadingAboutInfo(false);
+      }
+    };
+    loadAboutInfo();
+  }, []);
+
+  const sponsorsList = aboutInfo.sponsors.map((logoKey, index) => ({
+    key: `${logoKey}-${index}`,
+    src: sponsorLogos[logoKey] || logoUsthb,
+  }));
+
+  const leftItems = aboutInfo.leftItems || [];
+  const rightItems = aboutInfo.rightItems || [];
+
+  const themesList = aboutInfo.themes.map((theme, index) => ({
+    ...theme,
+    image: themeImages[theme.imageKey] || aiImage,
+    id: `${theme.name}-${index}`,
+  }));
 
   const handlePlayVideo = () => {
     setIsVideoOpen(true);
+  };
+
+  const submitThemeRequest = async () => {
+    if (!requestedTheme.trim()) return;
+    try {
+      await api.post("/api/theme-requests", { theme: requestedTheme.trim() });
+      setRequestedTheme("");
+      alert("Theme request sent successfully.");
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
   const [mediaRef, mediaInView] = useInView({ threshold: 0.3 });
@@ -116,11 +155,17 @@ const About = () => {
           <h3 className="sponsors-title">Our Partners & Sponsors</h3>
           <div className="logo-carousel">
             <div className="logo-track">
-              {sponsors.map((logo, index) => (
-                <div key={index} className="logo-item">
-                  <img src={logo} alt={`Sponsor ${index}`} />
-                </div>
-              ))}
+              {loadingAboutInfo ? (
+                <p>Loading sponsors...</p>
+              ) : sponsorsList.length > 0 ? (
+                sponsorsList.map((logo) => (
+                  <div key={logo.key} className="logo-item">
+                    <img src={logo.src} alt={logo.key} />
+                  </div>
+                ))
+              ) : (
+                <p>No sponsor information is available.</p>
+              )}
             </div>
           </div>
         </div>
@@ -132,18 +177,30 @@ const About = () => {
           <h2 className="why-attend-title">Why Attend?</h2>
           <div className="why-attend-grid">
             <ul className="why-list">
-              {leftItems.map((item, idx) => (
-                <li key={idx}>
-                  <FaCheck className="check-icon" /> {item}
-                </li>
-              ))}
+              {loadingAboutInfo ? (
+                <li>Loading reasons to attend...</li>
+              ) : leftItems.length > 0 ? (
+                leftItems.map((item, idx) => (
+                  <li key={`left-${idx}`}>
+                    <FaCheck className="check-icon" /> {item}
+                  </li>
+                ))
+              ) : (
+                <li>No attendance benefits available.</li>
+              )}
             </ul>
             <ul className="why-list">
-              {rightItems.map((item, idx) => (
-                <li key={idx}>
-                  <FaCheck className="check-icon" /> {item}
-                </li>
-              ))}
+              {loadingAboutInfo ? (
+                <li>Loading reasons to attend...</li>
+              ) : rightItems.length > 0 ? (
+                rightItems.map((item, idx) => (
+                  <li key={`right-${idx}`}>
+                    <FaCheck className="check-icon" /> {item}
+                  </li>
+                ))
+              ) : (
+                <li>No attendance benefits available.</li>
+              )}
             </ul>
           </div>
         </div>
@@ -153,14 +210,20 @@ const About = () => {
         <div className="container">
           <h2 className="themes-cards-title">Conference Themes</h2>
           <div className="themes-cards-grid">
-            {themes.map((theme, idx) => (
-              <div key={idx} className="theme-card">
-                <div className="theme-card-image">
-                  <img src={theme.image} alt={theme.name} />
+            {loadingAboutInfo ? (
+              <p>Loading conference themes...</p>
+            ) : themesList.length > 0 ? (
+              themesList.map((theme) => (
+                <div key={theme.id} className="theme-card">
+                  <div className="theme-card-image">
+                    <img src={theme.image} alt={theme.name} />
+                  </div>
+                  <h4 className="theme-card-name">{theme.name}</h4>
                 </div>
-                <h4 className="theme-card-name">{theme.name}</h4>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p>No themes are available right now.</p>
+            )}
           </div>
         </div>
       </section>
@@ -173,8 +236,10 @@ const About = () => {
               type="text"
               placeholder="Enter the theme..."
               className="theme-input"
+              value={requestedTheme}
+              onChange={(e) => setRequestedTheme(e.target.value)}
             />
-            <button className="theme-submit">
+            <button className="theme-submit" onClick={submitThemeRequest}>
               Send <FaChevronRight />
             </button>
           </div>

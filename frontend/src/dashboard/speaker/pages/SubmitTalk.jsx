@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { FaCheckCircle } from 'react-icons/fa';
+import { api } from '../../../utils/api';
 
 const SubmitTalk = () => {
   const [talkTitle, setTalkTitle] = useState('');
@@ -28,15 +29,26 @@ const SubmitTalk = () => {
     if (e.target.files && e.target.files[0]) setFile(e.target.files[0]);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!talkTitle || !abstract || !category || !file) {
       alert('Please fill all fields and upload a file');
       return;
     }
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 3000);
-    console.log({ talkTitle, abstract, category, fileName: file.name });
+    try {
+      const savedSpeaker = JSON.parse(localStorage.getItem('speakerData') || '{}');
+      await api.post('/api/talks', {
+        talkTitle,
+        abstract,
+        category,
+        fileName: file.name,
+        speakerEmail: savedSpeaker.email,
+      });
+      setSubmitted(true);
+      setTimeout(() => setSubmitted(false), 3000);
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
   if (submitted) {
